@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Returns Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #EEF3EA;
+    --paper-raised: #F6F9F3;
+    --ink: #20301F;
+    --ink-soft: #52604F;
+    --line: #C6D3C0;
+    --line-strong: #9FB197;
+    --overdue: #B3402A;
+    --overdue-bg: #F7E4DE;
+    --due-soon: #A9791E;
+    --due-soon-bg: #F5EAD3;
+    --paid: #3F6B4A;
+    --paid-bg: #E1EBDF;
+    --accent: #2C4A3B;
+    --accent-hover: #223A2F;
+  }
+  :root[data-theme="dark"] {
+    --paper: #16201A;
+    --paper-raised: #1D2A22;
+    --ink: #E7EFE3;
+    --ink-soft: #A7B7A1;
+    --line: #35473A;
+    --line-strong: #4A5F4D;
+    --overdue: #E08A6F;
+    --overdue-bg: #3A241E;
+    --due-soon: #E0BB6E;
+    --due-soon-bg: #3A2F1B;
+    --paid: #8FBE9B;
+    --paid-bg: #1F332A;
+    --accent: #7FB090;
+    --accent-hover: #9FC7AB;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #16201A;
+      --paper-raised: #1D2A22;
+      --ink: #E7EFE3;
+      --ink-soft: #A7B7A1;
+      --line: #35473A;
+      --line-strong: #4A5F4D;
+      --overdue: #E08A6F;
+      --overdue-bg: #3A241E;
+      --due-soon: #E0BB6E;
+      --due-soon-bg: #3A2F1B;
+      --paid: #8FBE9B;
+      --paid-bg: #1F332A;
+      --accent: #7FB090;
+      --accent-hover: #9FC7AB;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 480px; margin: 0 auto; padding: 18px 16px 100px; min-height: 100vh; }
+
+  header.top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--line-strong);
+    margin-bottom: 16px;
+  }
+  header.top h1 {
+    font-family: 'Zilla Slab', serif;
+    font-weight: 700;
+    font-size: 1.5rem;
+    margin: 0;
+    letter-spacing: 0.2px;
+  }
+  header.top .date {
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+  }
+
+  /* Tally row */
+  .tally {
+    display: flex;
+    border: 1px solid var(--line-strong);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 18px;
+    background: var(--paper-raised);
+  }
+  .tally button {
+    flex: 1;
+    text-align: left;
+    padding: 10px 12px;
+    background: none;
+    border: none;
+    border-right: 1px solid var(--line);
+    cursor: pointer;
+    font-family: 'IBM Plex Sans', sans-serif;
+    color: var(--ink);
+  }
+  .tally button:last-child { border-right: none; }
+  .tally button.active { box-shadow: inset 0 0 0 2px var(--accent); }
+  .tally .n { display: block; font-family: 'Zilla Slab', serif; font-size: 1.4rem; font-weight: 700; line-height: 1.1; }
+  .tally .lbl { display: block; font-size: 0.68rem; margin-top: 2px; opacity: 0.85; }
+  .tally-btn[data-filter="all"] .lbl { color: var(--ink-soft); }
+  .tally-btn[data-filter="overdue"] { background: var(--overdue-bg); }
+  .tally-btn[data-filter="overdue"] .n, .tally-btn[data-filter="overdue"] .lbl { color: var(--overdue); }
+  .tally-btn[data-filter="soon"] { background: var(--due-soon-bg); }
+  .tally-btn[data-filter="soon"] .n, .tally-btn[data-filter="soon"] .lbl { color: var(--due-soon); }
+  .tally-btn[data-filter="paid"] { background: var(--paid-bg); }
+  .tally-btn[data-filter="paid"] .n, .tally-btn[data-filter="paid"] .lbl { color: var(--paid); }
+
+  .list { border-top: 1px solid var(--line); }
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 4px;
+    border-bottom: 1px solid var(--line);
+    cursor: pointer;
+  }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .dot.overdue { background: var(--overdue); }
+  .dot.soon { background: var(--due-soon); }
+  .dot.paid { background: var(--paid); }
+  .row .info { flex: 1; min-width: 0; }
+  .row .name { font-weight: 600; font-size: 0.98rem; }
+  .row .sub { font-size: 0.78rem; color: var(--ink-soft); margin-top: 2px; }
+  .row .amt { font-family: 'Zilla Slab', serif; font-weight: 600; font-size: 0.95rem; white-space: nowrap; }
+  .row .chev { color: var(--ink-soft); font-size: 0.9rem; }
+
+  .empty {
+    padding: 40px 10px;
+    text-align: center;
+    color: var(--ink-soft);
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+
+  .fab {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(448px, calc(100% - 32px));
+    background: var(--accent);
+    color: var(--paper);
+    border: none;
+    border-radius: 6px;
+    padding: 14px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+  }
+  .fab:active { background: var(--accent-hover); }
+
+  /* screens */
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  .backbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+
+  label { display: block; font-size: 0.78rem; color: var(--ink-soft); margin: 14px 0 5px; }
+  input, textarea, select {
+    width: 100%;
+    padding: 11px 10px;
+    border: 1px solid var(--line-strong);
+    border-radius: 4px;
+    background: var(--paper-raised);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.95rem;
+  }
+  input:focus, textarea:focus, select:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  .btn-primary {
+    width: 100%;
+    margin-top: 22px;
+    padding: 13px;
+    background: var(--accent);
+    color: var(--paper);
+    border: none;
+    border-radius: 5px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+  }
+  .btn-primary:active { background: var(--accent-hover); }
+
+  .btn-secondary {
+    width: 100%;
+    margin-top: 10px;
+    padding: 12px;
+    background: none;
+    color: var(--ink);
+    border: 1px solid var(--line-strong);
+    border-radius: 5px;
+    font-weight: 500;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+
+  .btn-danger {
+    width: 100%;
+    margin-top: 10px;
+    padding: 11px;
+    background: none;
+    color: var(--overdue);
+    border: 1px solid var(--overdue);
+    border-radius: 5px;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+
+  .detail-header { margin-bottom: 4px; }
+  .detail-header h2 { font-family: 'Zilla Slab', serif; font-size: 1.4rem; margin: 0 0 2px; }
+  .badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    padding: 3px 9px;
+    border-radius: 20px;
+    font-weight: 600;
+    margin-top: 6px;
+  }
+  .badge.overdue { background: var(--overdue-bg); color: var(--overdue); }
+  .badge.soon { background: var(--due-soon-bg); color: var(--due-soon); }
+  .badge.paid { background: var(--paid-bg); color: var(--paid); }
+
+  .field-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 0.9rem;
+  }
+  .field-row .k { color: var(--ink-soft); }
+  .field-row .v { font-weight: 500; text-align: right; }
+
+  .sms-note {
+    margin-top: 18px;
+    padding: 12px;
+    border: 1px dashed var(--line-strong);
+    border-radius: 5px;
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    line-height: 1.5;
+  }
+
+  /* toast notification mock */
+  .toast {
+    position: fixed;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-120%);
+    width: min(420px, calc(100% - 28px));
+    background: var(--paper-raised);
+    border: 1px solid var(--line-strong);
+    border-left: 4px solid var(--overdue);
+    border-radius: 6px;
+    padding: 12px 14px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.22);
+    transition: transform 0.35s ease;
+    z-index: 50;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast .t-title { font-weight: 600; font-size: 0.85rem; margin-bottom: 3px; }
+  .toast .t-body { font-size: 0.78rem; color: var(--ink-soft); }
+
+  .section-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-soft);
+    margin: 22px 0 8px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- DASHBOARD -->
+  <div class="screen active" id="screen-dashboard">
+    <header class="top">
+      <h1>Returns Ledger</h1>
+      <span class="date" id="today-date"></span>
+    </header>
+
+    <div class="tally">
+      <button class="tally-btn active" data-filter="all">
+        <span class="n" id="tally-all">0</span>
+        <span class="lbl">All</span>
+      </button>
+      <button class="tally-btn" data-filter="overdue">
+        <span class="n overdue" id="tally-overdue">0</span>
+        <span class="lbl">Overdue</span>
+      </button>
+      <button class="tally-btn" data-filter="soon">
+        <span class="n soon" id="tally-soon">0</span>
+        <span class="lbl">Due soon</span>
+      </button>
+      <button class="tally-btn" data-filter="paid">
+        <span class="n paid" id="tally-paid">0</span>
+        <span class="lbl">Paid up</span>
+      </button>
+    </div>
+
+    <div class="list" id="borrower-list"></div>
+    <div class="empty" id="empty-state" style="display:none;">
+      No borrowers yet.<br>Tap "Add borrower" below to log your first one.
+    </div>
+
+    <button class="fab" onclick="showScreen('add')">+ Add borrower</button>
+  </div>
+
+  <!-- ADD BORROWER -->
+  <div class="screen" id="screen-add">
+    <div class="backbar" onclick="showScreen('dashboard')">&larr; Back to ledger</div>
+    <h2 style="font-family:'Zilla Slab',serif; margin-top:0;">Add borrower</h2>
+
+    <label for="f-name">Full name</label>
+    <input id="f-name" type="text" placeholder="e.g. Amina Njoroge">
+
+    <label for="f-phone">Phone number</label>
+    <input id="f-phone" type="tel" placeholder="e.g. 0712 345 678">
+
+    <label for="f-amount">Amount due</label>
+    <input id="f-amount" type="number" placeholder="e.g. 5000">
+
+    <label for="f-loanout">Loan out date</label>
+    <input id="f-loanout" type="date">
+
+    <label for="f-freq">Repayment schedule</label>
+    <select id="f-freq">
+      <option value="once">One-time (no repeat)</option>
+      <option value="every3">Every 3 days</option>
+      <option value="weekly">Weekly</option>
+      <option value="monthly">Monthly</option>
+    </select>
+
+    <label for="f-duration">Loan duration (months)</label>
+    <input id="f-duration" type="number" min="1" placeholder="e.g. 3" disabled>
+
+    <label for="f-due">First due date <span style="font-weight:400;">(auto-filled — adjust if needed)</span></label>
+    <input id="f-due" type="date">
+
+    <label for="f-notes">Notes (optional)</label>
+    <textarea id="f-notes" rows="2" placeholder="e.g. weekly repayment"></textarea>
+
+    <button class="btn-primary" onclick="addBorrower()">Save borrower</button>
+  </div>
+
+  <!-- DETAIL -->
+  <div class="screen" id="screen-detail">
+    <div class="backbar" onclick="showScreen('dashboard')">&larr; Back to ledger</div>
+
+    <div class="detail-header">
+      <h2 id="d-name">—</h2>
+      <span class="badge" id="d-badge">—</span>
+    </div>
+
+    <div style="margin-top:16px;">
+      <div class="field-row"><span class="k">Phone</span><span class="v" id="d-phone">—</span></div>
+      <div class="field-row"><span class="k">Amount due</span><span class="v" id="d-amount">—</span></div>
+      <div class="field-row"><span class="k">Loan out date</span><span class="v" id="d-loanout">—</span></div>
+      <div class="field-row"><span class="k">Next due date</span><span class="v" id="d-due">—</span></div>
+      <div class="field-row"><span class="k">Repayment schedule</span><span class="v" id="d-freq">—</span></div>
+      <div class="field-row" id="d-lastrepay-row"><span class="k">Last repayment date</span><span class="v" id="d-lastrepay">—</span></div>
+      <div class="field-row" id="d-notes-row"><span class="k">Notes</span><span class="v" id="d-notes">—</span></div>
+    </div>
+
+    <div class="section-label">Actions</div>
+    <button class="btn-primary" onclick="logPayment()">Log payment received</button>
+    <button class="btn-secondary" onclick="simulateNotification()">Preview reminder notification</button>
+    <button class="btn-danger" onclick="deleteBorrower()">Remove borrower</button>
+
+    <div class="sms-note">
+      SMS-to-borrower reminders are built in but switched off for now — worth turning on once the borrower list grows past what one operator can call/text by hand.
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast">
+  <div class="t-title" id="toast-title">Payment due</div>
+  <div class="t-body" id="toast-body">This is how the daily reminder will look on your desktop, even with the app closed.</div>
+</div>
+
+<script>
+  let borrowers = [];
+  let currentId = null;
+  let currentFilter = 'all';
+
+  function load() {
+    try {
+      const raw = localStorage.getItem('ledger_borrowers');
+      borrowers = raw ? JSON.parse(raw) : [];
+    } catch (e) { borrowers = []; }
+  }
+  function save() {
+    try { localStorage.setItem('ledger_borrowers', JSON.stringify(borrowers)); }
+    catch (e) { console.error('Could not save', e); }
+  }
+
+  const FREQ_LABELS = {
+    once: 'One-time',
+    every3: 'Every 3 days',
+    weekly: 'Weekly',
+    monthly: 'Monthly'
+  };
+
+  function addInterval(dateStr, freq) {
+    const d = new Date(dateStr + 'T00:00:00');
+    if (freq === 'every3') d.setDate(d.getDate() + 3);
+    else if (freq === 'weekly') d.setDate(d.getDate() + 7);
+    else if (freq === 'monthly') d.setMonth(d.getMonth() + 1);
+    return d.toISOString().slice(0, 10);
+  }
+
+  function addMonths(dateStr, months) {
+    const d = new Date(dateStr + 'T00:00:00');
+    d.setMonth(d.getMonth() + Number(months));
+    return d.toISOString().slice(0, 10);
+  }
+
+  function daysUntil(dateStr) {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const due = new Date(dateStr + 'T00:00:00');
+    return Math.round((due - today) / 86400000);
+  }
+
+  function statusOf(b) {
+    if (b.paid) return 'paid';
+    const d = daysUntil(b.due);
+    if (d < 0) return 'overdue';
+    if (d <= 3) return 'soon';
+    return 'upcoming';
+  }
+
+  function fmtDate(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  function render() {
+    document.getElementById('today-date').textContent =
+      new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+
+    const counts = { all: borrowers.length, overdue: 0, soon: 0, paid: 0 };
+    borrowers.forEach(b => {
+      const s = statusOf(b);
+      if (s === 'overdue') counts.overdue++;
+      else if (s === 'soon') counts.soon++;
+      else if (s === 'paid') counts.paid++;
+    });
+    document.getElementById('tally-all').textContent = counts.all;
+    document.getElementById('tally-overdue').textContent = counts.overdue;
+    document.getElementById('tally-soon').textContent = counts.soon;
+    document.getElementById('tally-paid').textContent = counts.paid;
+
+    let filtered = borrowers.filter(b => {
+      if (currentFilter === 'all') return true;
+      return statusOf(b) === currentFilter;
+    });
+
+    filtered.sort((a, b) => daysUntil(a.due) - daysUntil(b.due));
+
+    const listEl = document.getElementById('borrower-list');
+    const emptyEl = document.getElementById('empty-state');
+    listEl.innerHTML = '';
+
+    if (filtered.length === 0) {
+      emptyEl.style.display = 'block';
+      emptyEl.textContent = borrowers.length === 0
+        ? 'No borrowers yet. Tap "Add borrower" below to log your first one.'
+        : 'Nothing in this category.';
+    } else {
+      emptyEl.style.display = 'none';
+      filtered.forEach(b => {
+        const s = statusOf(b);
+        const row = document.createElement('div');
+        row.className = 'row';
+        row.onclick = () => openDetail(b.id);
+        const label = s === 'overdue' ? `${Math.abs(daysUntil(b.due))}d overdue`
+                    : s === 'paid' ? 'Paid up'
+                    : s === 'soon' ? `Due in ${daysUntil(b.due)}d`
+                    : `Due ${fmtDate(b.due)}`;
+        row.innerHTML = `
+          <span class="dot ${s === 'upcoming' ? 'paid' : s}" style="${s==='upcoming' ? 'background:var(--line-strong)' : ''}"></span>
+          <span class="info">
+            <span class="name">${escapeHtml(b.name)}</span>
+            <span class="sub">${label}</span>
+          </span>
+          <span class="amt">${b.amount ? 'KES ' + Number(b.amount).toLocaleString() : ''}</span>
+          <span class="chev">›</span>
+        `;
+        listEl.appendChild(row);
+      });
+    }
+  }
+
+  function escapeHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  document.querySelectorAll('.tally-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tally-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentFilter = btn.dataset.filter;
+      render();
+    });
+  });
+
+  function showScreen(name) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-' + name).classList.add('active');
+    if (name === 'add') {
+      ['f-name','f-phone','f-amount','f-loanout','f-duration','f-due','f-notes'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('f-freq').value = 'once';
+      document.getElementById('f-duration').disabled = true;
+    }
+  }
+
+  function suggestFirstDue() {
+    const loanout = document.getElementById('f-loanout').value;
+    const freq = document.getElementById('f-freq').value;
+    if (!loanout) return;
+    document.getElementById('f-due').value = addInterval(loanout, freq === 'once' ? 'once' : freq);
+  }
+
+  document.getElementById('f-loanout').addEventListener('change', suggestFirstDue);
+  document.getElementById('f-freq').addEventListener('change', () => {
+    const freq = document.getElementById('f-freq').value;
+    document.getElementById('f-duration').disabled = (freq === 'once');
+    if (freq === 'once') document.getElementById('f-duration').value = '';
+    suggestFirstDue();
+  });
+
+  function addBorrower() {
+    const name = document.getElementById('f-name').value.trim();
+    const phone = document.getElementById('f-phone').value.trim();
+    const amount = document.getElementById('f-amount').value;
+    const loanout = document.getElementById('f-loanout').value;
+    const frequency = document.getElementById('f-freq').value;
+    const duration = document.getElementById('f-duration').value;
+    const due = document.getElementById('f-due').value;
+    const notes = document.getElementById('f-notes').value.trim();
+
+    if (!name || !due) {
+      alert('Please add at least a name and a due date.');
+      return;
+    }
+    if (frequency !== 'once' && !duration) {
+      alert('Please add a loan duration (in months) for a recurring schedule.');
+      return;
+    }
+
+    const lastRepay = (frequency !== 'once' && loanout && duration) ? addMonths(loanout, duration) : null;
+
+    borrowers.push({
+      id: Date.now().toString(),
+      name, phone, amount, loanout, due, frequency, duration, lastRepay, notes,
+      paid: false,
+      completed: false
+    });
+    save();
+    render();
+    showScreen('dashboard');
+  }
+
+  function openDetail(id) {
+    currentId = id;
+    const b = borrowers.find(x => x.id === id);
+    if (!b) return;
+    const s = statusOf(b);
+
+    document.getElementById('d-name').textContent = b.name;
+    const badge = document.getElementById('d-badge');
+    badge.className = 'badge ' + (s === 'upcoming' ? 'paid' : s);
+    badge.textContent = s === 'overdue' ? 'Overdue'
+                        : s === 'soon' ? 'Due soon'
+                        : s === 'paid' ? (b.completed ? 'Loan completed' : 'Paid up')
+                        : 'Upcoming';
+    document.getElementById('d-phone').textContent = b.phone || '—';
+    document.getElementById('d-amount').textContent = b.amount ? 'KES ' + Number(b.amount).toLocaleString() : '—';
+    document.getElementById('d-loanout').textContent = b.loanout ? fmtDate(b.loanout) : '—';
+    document.getElementById('d-due').textContent = fmtDate(b.due);
+    document.getElementById('d-freq').textContent = FREQ_LABELS[b.frequency] || 'One-time';
+    const lastRow = document.getElementById('d-lastrepay-row');
+    if (b.frequency && b.frequency !== 'once' && b.lastRepay) {
+      lastRow.style.display = 'flex';
+      document.getElementById('d-lastrepay').textContent = fmtDate(b.lastRepay);
+    } else {
+      lastRow.style.display = 'none';
+    }
+    const notesRow = document.getElementById('d-notes-row');
+    if (b.notes) {
+      notesRow.style.display = 'flex';
+      document.getElementById('d-notes').textContent = b.notes;
+    } else {
+      notesRow.style.display = 'none';
+    }
+
+    showScreen('detail');
+  }
+
+  function logPayment() {
+    const b = borrowers.find(x => x.id === currentId);
+    if (!b) return;
+    if (!b.frequency || b.frequency === 'once') {
+      b.paid = true;
+    } else {
+      const next = addInterval(b.due, b.frequency);
+      if (b.lastRepay && next > b.lastRepay) {
+        b.paid = true;
+        b.completed = true;
+      } else {
+        b.due = next;
+        b.paid = false;
+      }
+    }
+    save();
+    render();
+    showScreen('dashboard');
+  }
+
+  function deleteBorrower() {
+    if (!confirm('Remove this borrower from the ledger?')) return;
+    borrowers = borrowers.filter(x => x.id !== currentId);
+    save();
+    render();
+    showScreen('dashboard');
+  }
+
+  function simulateNotification() {
+    const b = borrowers.find(x => x.id === currentId);
+    if (!b) return;
+    const s = statusOf(b);
+    const title = document.getElementById('toast-title');
+    const body = document.getElementById('toast-body');
+    title.textContent = s === 'overdue' ? `${b.name} — payment overdue` : `${b.name} — payment due soon`;
+    body.textContent = `This is a preview of the desktop notification the operator would see, even with the app closed.`;
+    const toast = document.getElementById('toast');
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3200);
+  }
+
+  load();
+  render();
+</script>
+</body>
+</html>
